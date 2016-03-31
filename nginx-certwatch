@@ -74,7 +74,7 @@ while [ $# -gt 0  ]; do
 
 		*)
 			echo "Invalid argument: '${1}'." 1>&2
-			echo "Usage: ${0} [--period=30] [--email=user@mail.tld] [--path=/etc/letsencryt]" 1>&2
+			echo "Usage: ${0} [--period=30] [--email=user@mail.tld] [--path=/etc/nginx]" 1>&2
 			exit 1
 			;;
 
