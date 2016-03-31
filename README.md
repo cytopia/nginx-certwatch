@@ -1,6 +1,6 @@
 # nginx-certwatch
 
-Independent [certwatch](http://linux.die.net/man/1/certwatch) cron script for actively used [nginx](http://nginx.org/) ssl certificates.
+Independent [certwatch](http://linux.die.net/man/1/certwatch) cron script for all [nginx](http://nginx.org/) ssl vhosts.
 
 This was mainly built as I am using [nginx](http://nginx.org/) and the normal `/etc/cron.daily/certwatch` script is not picking up the SSL certificates in my vhosts as it relies on [apache](apache.org) and quits if it is not found:
 ```shell
