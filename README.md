@@ -2,6 +2,12 @@
 
 Independent [certwatch](http://linux.die.net/man/1/certwatch) cron script for all [nginx](http://nginx.org/) ssl vhosts.
 
+---
+
+See also: **[letsencrypt-watch](https://github.com/cytopia/letsencrypt-watch)**
+
+---
+
 This was mainly built as I am using [nginx](http://nginx.org/) and the normal `/etc/cron.daily/certwatch` script is not picking up the SSL certificates in my vhosts as it relies on [apache](apache.org) and quits if it is not found:
 ```shell
 test -x /etc/httpd/modules/libmodnss.so || return 0
