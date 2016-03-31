@@ -1,0 +1,161 @@
+#!/bin/sh -ue
+
+
+PATH="/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:$PATH"
+
+
+
+############################################################
+# Variables that can be overwritten via cmd args
+############################################################
+
+#
+# Default nginx path.
+# Can be overwritten via --path=/path/to/nginx
+#
+NGINX_CONF_PATH="/etc/nginx"
+
+#
+# Default max validity in days
+# Can be overwritten via --period=10
+#
+MAX_DAYS="30"
+
+#
+# Default email address when certs are out of validity
+# Can be overwritten via --email=user@example.tld
+#
+EMAIL="root"
+
+
+
+
+############################################################
+# Variables that are fix
+############################################################
+
+
+
+#
+# sed is required to extract the command line arguments
+# if there are command line arguments.
+#
+if [ $# -gt 0 ]; then
+	if ! command -v sed > /dev/null 2>&1 ; then
+		echo "Binary 'sed' not found but required."
+		exit 1
+	fi
+fi
+
+
+
+############################################################
+# Command line arguments
+############################################################
+
+#
+# Get optional command line arguments
+#
+while [ $# -gt 0  ]; do
+
+	case "$1" in
+
+		--period=*)
+			MAX_DAYS="$( echo "$1" | sed 's/--period=//g' )"
+			;;
+
+		--email=*)
+			EMAIL="$( echo "$1" | sed 's/--email=//g' )"
+			;;
+
+		--path=*)
+			NGINX_CONF_PATH="$( echo "$1" | sed 's/--path=//g' )"
+			;;
+
+		*)
+			echo "Invalid argument: '${1}'." 1>&2
+			echo "Usage: ${0} [--period=30] [--email=user@mail.tld] [--path=/etc/letsencryt]" 1>&2
+			exit 1
+			;;
+
+	esac
+	shift
+done
+
+
+
+############################################################
+# Validate requirements
+############################################################
+
+#
+# Binaries
+#
+if ! command -v certwatch > /dev/null 2>&1 ; then
+	echo "Binary 'certwatch' not found but required."
+	exit 1
+fi
+if ! command -v sendmail > /dev/null 2>&1 ; then
+	echo "Binary 'sendmail' not found but required."
+	exit 1
+fi
+if ! command -v find > /dev/null 2>&1 ; then
+	echo "Binary 'find' not found but required."
+	exit 1
+fi
+
+if ! command -v awk > /dev/null 2>&1 ; then
+	echo "Binary 'awk' not found but required."
+	exit 1
+fi
+
+#
+# Paths
+#
+if [ ! -d "${NGINX_CONF_PATH}" ]; then
+	echo "Nginx config path not found in: ${NGINX_CONF_PATH}"
+	exit 1
+fi
+
+#
+# Check if there is at least one certificate available
+#
+SSL_DIRECTIVES="$( $(which find) "${NGINX_CONF_PATH}" -name "*.conf" -exec grep -E '[[:space:]]*ssl_certificate[[:space:]]+' "{}" \; )"
+CERTIFICATES="$( echo "${SSL_DIRECTIVES}" | awk '{print $2}' | awk -F ';' '{print $1}' )"
+
+if [ "${SSL_DIRECTIVES}" = "" ]; then
+	echo "No SSL directives in nginx config files found"
+	exit 1
+fi
+if [ "${CERTIFICATES}" = "" ]; then
+	echo "No certificates found"
+	exit 1
+fi
+
+
+
+############################################################
+# certwatch function
+############################################################
+
+#
+# Check certificates
+#
+watch_nginx_certs()
+{
+	# Build certwatch options
+	opts="--period ${MAX_DAYS} --address ${EMAIL}"
+
+	# Get full path of binaries
+	certwatch_bin="$( which certwatch )"
+	sendmail_bin="$( which sendmail )"
+
+	for c in ${CERTIFICATES}; do
+		# Check whether a warning message is needed, then issue one if so.
+		${certwatch_bin} ${opts} -q "${c}" &&
+		${certwatch_bin} ${opts} "${c}" | ${sendmail_bin} -oem -oi -t 2>/dev/null
+	done
+}
+
+watch_nginx_certs
+exit 0
